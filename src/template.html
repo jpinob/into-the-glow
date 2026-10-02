@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Into the glow: a journey inside green fluorescent protein</title>
+<meta name="description" content="Fly into a real protein, atom by atom, and find the light hidden at its centre.">
+<meta name="author" content="Javier Pino">
+<link rel="canonical" href="https://jpinob.github.io/into-the-glow/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jpinob.github.io/into-the-glow/">
+<meta property="og:title" content="Into the glow: a journey inside green fluorescent protein">
+<meta property="og:description" content="A 3D journey inside GFP, the jellyfish protein behind the 2008 Nobel Prize in Chemistry, built from its real atomic structure.">
+<meta property="og:image" content="https://jpinob.github.io/into-the-glow/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta property="og:image:alt" content="Green fluorescent protein glowing from inside its barrel of strands">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Newsreader:opsz,wght@6..72,300;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-top:#2A6385; --bg-bottom:#123956;
+  --paper:rgba(243,248,250,.95); --ink:#0E2233; --ink-soft:#3E5B70; --line:rgba(14,34,51,.16);
+  --blue:#2B55E0; --green:#16864A; --glow:#5BE38A; --chip:#E3EEF3; --on-ink:#F3F8FA;
+  --serif:"Newsreader", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --sans:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg-top:#0B2446; --bg-bottom:#051431;
+    --paper:rgba(8,26,52,.86); --ink:#E7F1F7; --ink-soft:#A3BDD0; --line:rgba(231,241,247,.16);
+    --blue:#7C9DFF; --green:#6BE89A; --chip:rgba(231,241,247,.08); --on-ink:#051431;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg-top:#0B2446; --bg-bottom:#051431;
+  --paper:rgba(8,26,52,.86); --ink:#E7F1F7; --ink-soft:#A3BDD0; --line:rgba(231,241,247,.16);
+  --blue:#7C9DFF; --green:#6BE89A; --chip:rgba(231,241,247,.08); --on-ink:#051431;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+html,body{margin:0;height:100%;overflow:hidden}
+body{
+  background:var(--bg-bottom);
+  background-image:radial-gradient(120% 90% at 50% 20%, var(--bg-top) 0%, var(--bg-bottom) 70%);
+  color:var(--ink); font-family:var(--sans); font-size:17px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#scene:active{cursor:grabbing}
+
+.masthead{position:fixed;top:calc(env(safe-area-inset-top,0px) + 18px);left:22px;right:22px;pointer-events:none;color:#EAF4F9}
+.masthead h1{font-family:var(--serif);font-weight:300;font-size:clamp(30px,4.2vw,52px);line-height:1.02;margin:0;letter-spacing:-.01em;text-shadow:0 2px 24px rgba(0,0,0,.25)}
+.masthead p{margin:6px 0 0;font-size:15px;opacity:.82;max-width:34ch}
+
+/* depth gauge: live distance to the light source */
+.gauge{position:fixed;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:flex-end;gap:10px;color:#EAF4F9}
+.gauge .reading{text-align:right}
+.gauge .num{font-family:var(--serif);font-weight:500;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.gauge .unit{font-size:13px;opacity:.8}
+.gauge ol{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.gauge button{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;color:#EAF4F9;opacity:.62;padding:3px 0;border-radius:4px}
+.gauge button .tick{width:14px;height:2px;background:currentColor;border-radius:2px;transition:width .3s}
+.gauge button[aria-current="step"]{opacity:1;font-weight:700}
+.gauge button[aria-current="step"] .tick{width:30px;background:var(--glow)}
+.gauge button:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+.gauge .label{max-width:0;overflow:hidden;white-space:nowrap;transition:max-width .3s}
+.gauge:hover .label,.gauge button:focus-visible .label,.gauge button[aria-current="step"] .label{max-width:160px}
+
+.card{
+  position:fixed;left:22px;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);width:min(430px,calc(100% - 44px));
+  background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:20px 22px 18px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 18px 50px rgba(0,10,30,.28)
+}
+.card .step{margin:0 0 4px;font-size:14px;color:var(--ink-soft)}
+.card h2{font-family:var(--serif);font-weight:500;font-size:28px;line-height:1.1;margin:0 0 8px}
+.card .body{margin:0}
+.card .legend{margin:6px 0 0;font-size:14px;color:var(--ink-soft)}
+.card .legend:empty{display:none}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.controls:empty{display:none}
+.chip{font:inherit;font-size:14px;line-height:1.2;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.chip .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 0 1px var(--line)}
+.chip .count{color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.chip.toggle[aria-pressed="false"]{opacity:.45}
+.chip:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
+.speed{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+.speed input{accent-color:var(--green);width:110px}
+.speed output{min-width:3ch;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+.tag{position:fixed;left:0;top:0;transform:translate(-50%,-180%);padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;pointer-events:none;opacity:0;color:#0b2446;box-shadow:0 4px 14px rgba(0,10,30,.3)}
+.atom-tag{position:fixed;left:0;top:0;pointer-events:none;opacity:0;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:8px 12px;box-shadow:0 10px 30px rgba(0,10,30,.35);white-space:nowrap;display:flex;flex-direction:column;gap:2px;z-index:5}
+.atom-tag .el{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px}
+.atom-tag .dot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px var(--line)}
+.atom-tag .res{font-size:14px;color:var(--ink-soft)}
+.tag.start{background:#7cf0c8;transform:translate(-50%,70%)}
+.tag.end{background:#ff9f7a}
+.card .live{margin:8px 0 0;font-size:15px;color:var(--green);min-height:1.5em;font-variant-numeric:tabular-nums}
+.actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn{font:inherit;font-size:16px;font-weight:700;border-radius:999px;padding:10px 18px;cursor:pointer;border:1px solid var(--line);background:var(--chip);color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--on-ink);border-color:transparent}
+.btn.ghost{background:transparent}
+.btn.shine{background:var(--blue);color:#fff;border-color:transparent;margin-top:12px}
+.btn.shine[hidden]{display:none}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
+.hint{margin:10px 0 0;font-size:13px;color:var(--ink-soft)}
+
+.sources{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:min(360px,calc(100% - 36px));color:#EAF4F9;font-size:13px;text-align:right}
+.sources summary{cursor:pointer;opacity:.8;list-style:none}
+.sources summary::-webkit-details-marker{display:none}
+.sources summary:focus-visible{outline:2px solid var(--glow);outline-offset:3px;border-radius:4px}
+.sources .panel{position:absolute;right:0;bottom:calc(100% + 8px);width:min(360px,calc(100vw - 36px));text-align:left;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.sources ul{margin:0;padding-left:18px}
+.sources a{color:var(--ink)}
+.about-btn{pointer-events:auto;margin-top:12px;font:inherit;font-size:14px;font-weight:700;color:#EAF4F9;background:rgba(234,244,249,.12);border:1px solid rgba(234,244,249,.35);border-radius:999px;padding:7px 14px;cursor:pointer;backdrop-filter:blur(6px)}
+.about-btn:hover{background:rgba(234,244,249,.2)}
+.about-btn:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
+.about{position:fixed;inset:0;z-index:20;background:rgba(3,12,28,.6);display:grid;place-items:center;padding:20px}
+.about[hidden]{display:none}
+.about-card{position:relative;max-width:560px;max-height:min(80vh,calc(100% - 20px));overflow:auto;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:24px 26px 20px;box-shadow:0 24px 70px rgba(0,10,30,.45)}
+.about-card h2{font-family:var(--serif);font-weight:500;font-size:28px;margin:0 0 10px}
+.about-card ol{margin:0;padding-left:22px}
+.about-card li{margin:0 0 10px}
+.about-card a{color:var(--ink)}
+.about-card .close{position:absolute;top:12px;right:12px;font:inherit;font-size:16px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer}
+.about-card .close:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
+.glow-btn{all:unset;cursor:pointer;margin-top:12px;font-size:13px;color:#EAF4F9;opacity:.75;padding:4px 0;border-radius:4px}
+.glow-btn[aria-pressed="false"]{opacity:.55}
+.glow-btn:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+.loading{position:fixed;inset:0;display:grid;place-items:center;color:#EAF4F9;font-size:16px;pointer-events:none;transition:opacity .6s}
+
+@media (max-width:720px){
+  body{font-size:16px}
+  .masthead{left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 12px)}
+  .masthead p{display:none}
+  .about-btn{margin-top:6px;font-size:13px;padding:5px 11px}
+  .gauge .glow-btn{display:none}
+  .about-card{padding:18px 18px 14px}
+  .about-card h2{font-size:23px}
+  .gauge{top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;transform:none}
+  .gauge .num{font-size:24px}
+  .gauge ol{display:none}
+  .card{left:10px;right:10px;width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);padding:16px 16px 14px;border-radius:16px}
+  .card h2{font-size:23px}
+  .card .body{min-height:0}
+  .hint{display:none}
+  .chip{font-size:13px;padding:5px 10px;gap:6px}
+  .actions .btn{font-size:15px;padding:9px 14px}
+  .actions{gap:8px}
+  .controls{gap:6px;margin-top:10px}
+  .speed input{width:90px}
+  .sources{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 64px);right:14px}
+  .sources .panel{bottom:auto;top:calc(100% + 8px)}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="3D model of green fluorescent protein. Drag to turn it, scroll or pinch to zoom."></canvas>
+<div class="atom-tag" id="atomTag" aria-hidden="true"><span class="el"><span class="dot" id="atomDot"></span><span id="atomEl"></span></span><span class="res" id="atomRes"></span></div>
+<div class="tag start" id="tagStart" aria-hidden="true">Start: amino acid 2</div>
+<div class="tag end" id="tagEnd" aria-hidden="true">End: amino acid 229</div>
+<div class="loading" id="loading">Placing 1,771 atoms…</div>
+
+<header class="masthead">
+  <h1>Into the glow</h1>
+  <p>A journey inside green fluorescent protein, built from its real atomic structure.</p>
+  <button class="about-btn" id="aboutBtn">How it was made</button>
+</header>
+
+<div class="about" id="about" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" hidden>
+  <div class="about-card">
+    <button class="close" id="aboutClose" aria-label="Close">&#x2715;</button>
+    <h2 id="aboutTitle">How it was made</h2>
+    <ol>
+      <li><b>Real data.</b> Atomic coordinates from PDB entry 1EMA: X-ray crystallography at 1.9 Å, Ormö et al. 1996, released under CC0.</li>
+      <li><b>A pipeline, not a drawing.</b> A Python script (gemmi, NumPy) reads the file, keeps the 1,771 atoms and the 11 strands, aligns the barrel and writes 42 KB of data.</li>
+      <li><b>One file.</b> That data is embedded in a single HTML page that renders everything with Three.js. No server, no framework.</li>
+      <li><b>Every fact traced.</b> Each fact on screen traces back to a primary source: the structure file, its publication, the PDB data policy or the Nobel Prize documentation. One detail stayed flagged until the primary source was found.</li>
+      <li><b>Two reviews.</b> A protein scientist checked the science. Javier Pino checked it as training content.</li>
+      <li><b>Tested like software.</b> Screenshots of every stop on desktop, mobile, light and dark, taken with Playwright in a headless browser.</li>
+      <li><b>Built with Claude Opus 5.5</b> (Anthropic), directed and verified by Javier Pino. Code and data: <a href="https://github.com/jpinob/into-the-glow" target="_blank" rel="noopener">github.com/jpinob/into-the-glow</a>.</li>
+    </ol>
+  </div>
+</div>
+
+<nav class="gauge" aria-label="Journey">
+  <div class="reading" aria-live="off">
+    <div class="num"><span id="dist">–</span></div>
+    <div class="unit">Å to the light source</div>
+  </div>
+  <ol id="stops"></ol>
+  <button class="glow-btn" id="glowBtn" aria-pressed="true">Glow effects: on</button>
+</nav>
+
+<section class="card" aria-live="polite">
+  <p class="step" id="step">Stop 1 of 6</p>
+  <h2 id="title">Meet GFP</h2>
+  <p class="body" id="body"></p>
+  <p class="legend" id="legend"></p>
+  <div class="controls" id="controls"></div>
+  <p class="live" id="live"></p>
+  <button class="btn shine" id="shine" aria-pressed="false" hidden>Shine blue light</button>
+  <div class="actions">
+    <button class="btn" id="prev">Back</button>
+    <button class="btn primary" id="next">Next stop</button>
+    <button class="btn ghost" id="recentre" title="Return to this stop's view (R)">Re-centre</button>
+  </div>
+  <p class="hint">Drag to turn. Right-drag or Shift-drag to move. Scroll or pinch to zoom. Arrow keys move between stops.</p>
+</section>
+
+<details class="sources">
+  <summary>Sources</summary>
+  <div class="panel">
+    <ul>
+      <li>Atomic structure: <a href="https://www.rcsb.org/structure/1EMA" target="_blank" rel="noopener">PDB 1EMA</a>, GFP S65T variant. Ormö et al., Science 273:1392 (1996).</li>
+      <li><a href="https://www.nobelprize.org/prizes/chemistry/2008/popular-information/" target="_blank" rel="noopener">Nobel Prize in Chemistry 2008: popular information</a></li>
+      <li><a href="https://www.nobelprize.org/prizes/chemistry/2008/press-release/" target="_blank" rel="noopener">Nobel Prize in Chemistry 2008: press release</a></li>
+      <li>In this engineered variant, amino acid 65 is threonine. The natural protein has serine.</li>
+      <li>The crystal was grown with selenomethionine. The 4 orange atoms are selenium, which takes the place of sulfur in methionine.</li>
+      <li>Amino acid 1 and amino acids 230 to 238 are not visible in this structure.</li>
+      <li>Light effects and colours are illustrative. 1 Å (ångström) = 0.1 nanometres.</li>
+      <li>Made by Javier Pino with Claude Opus 5.5. <a href="https://github.com/jpinob/into-the-glow" target="_blank" rel="noopener">Code and data on GitHub</a>.</li>
+    </ul>
+  </div>
+</details>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>
+(function(){
+"use strict";
+const D = __DATA__;
+const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- story ---------- */
+const STOPS = [
+  { name:"Meet GFP", title:"Meet GFP",
+    body:"This is green fluorescent protein, first seen in the jellyfish Aequorea victoria. Every sphere is a real atom, placed where a 1996 X-ray study found it. Somewhere inside, something glows.",
+    legend:"1,771 atoms. Hydrogens are not part of this structure. Tap an atom to identify it, or tap a type to hide it.",
+    cam:[62,26,64], tgt:[0,2,0], atoms:1, tube:0, thread:0, glow:.35, spin:true },
+  { name:"The barrel", title:"A barrel of 11 strands",
+    body:"Hide the atoms and the backbone appears. Eleven strands sit side by side and close into a barrel, about 2.4 nanometres across.",
+    legend:"Blue-green bands: the 11 strands. Grey: loops.",
+    cam:[0,8,78], tgt:[0,2,0], atoms:.06, tube:1, thread:0, glow:.3, spin:true },
+  { name:"One thread", title:"One single thread",
+    body:"The whole barrel is one chain, folded on itself. Follow the light as it walks the chain from end to end. We can see 228 of its 238 amino acids here.",
+    legend:"Mint marks where the chain starts. Coral marks where it ends.",
+    cam:[66,9,-57], tgt:[0,-2,0], offPortrait:.06, distPortrait:1.07, atoms:0, tube:1, thread:0, glow:.3, pulse:true, spin:false },
+  { name:"Down the middle", title:"Down the middle",
+    body:"One stretch of the chain runs down the middle of the barrel. It's called the central helix, though only short pieces of it are a true helix. The glowing part forms from it.",
+    legend:"Gold: the central stretch. The strands are faded so you can see inside.",
+    cam:[40,10,34], tgt:[0,3,0], atoms:0, tube:.28, thread:1, glow:.45, spin:false },
+  { name:"The light source", title:"The light source",
+    body:"At the very centre, amino acids 65, 66 and 67 have fused into one group: the chromophore. Its bright green rings absorb and emit light. It forms by itself once the protein folds, using only oxygen.",
+    legend:"Bright green: the rings that make light. Pale green: the rest of amino acids 65 to 67.",
+    cam:[12,7,17], tgt:[0,0,0], atoms:0, tube:.3, thread:.35, glow:.6, chromo:true, shine:true, spin:false },
+  { name:"Why it matters", title:"Why it matters",
+    body:"Scientists attach GFP to other proteins to follow them inside living cells. Its discovery and development won the 2008 Nobel Prize in Chemistry.",
+    cam:[70,34,66], tgt:[0,2,0], atoms:.16, tube:1, thread:1, glow:1, chromo:true, dim:1, spin:true }
+];
+
+/* ---------- three.js setup ---------- */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+const scene = new THREE.Scene();
+const fogCol = getComputedStyle(document.documentElement).getPropertyValue('--bg-bottom').trim() || '#0b2446';
+scene.fog = new THREE.FogExp2(new THREE.Color(fogCol), 0.0045);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.3, 600);
+/* background: the page's radial gradient, drawn screen-aligned so post-processing sees it */
+function makeBg(){
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'), cs = getComputedStyle(document.documentElement);
+  const top = cs.getPropertyValue('--bg-top').trim() || '#0B2446', bot = cs.getPropertyValue('--bg-bottom').trim() || '#051431';
+  g.fillStyle = bot; g.fillRect(0,0,512,512);
+  g.save(); g.translate(256, 102); g.scale(1.2, .9);
+  const gr = g.createRadialGradient(0,0,0, 0,0,512);
+  gr.addColorStop(0, top); gr.addColorStop(.7, bot); gr.addColorStop(1, bot);
+  g.fillStyle = gr; g.fillRect(-600,-600,1200,1200); g.restore();
+  return new THREE.CanvasTexture(c);
+}
+scene.background = makeBg();
+if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { scene.background = makeBg(); });
+const canBloom = !!(THREE.EffectComposer && THREE.RenderPass && THREE.UnrealBloomPass);
+let composer = null, bloomPass = null, bloomOn = canBloom;
+if (canBloom){
+  composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(1,1), 0, .6, .8);
+  composer.addPass(bloomPass);
+}
+
+const hemi = new THREE.HemisphereLight(0xdff1ff, 0x0d2a45, 0.8); scene.add(hemi);
+const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(40,60,50); scene.add(key);
+const greenLight = new THREE.PointLight(0x5be38a, 0, 70, 1.4); scene.add(greenLight);
+
+/* ---------- atoms ---------- */
+const A = D.a, N = A.length/5;
+const ELCOL = [0xb9d3dc, 0x6f98ec, 0xe9837a, 0xf2d36b, 0xe8a857];
+const ELRAD = [1.7, 1.55, 1.52, 1.8, 1.9];
+const croStart = D.cro[0], croEnd = D.cro[1];
+const small = Math.min(window.innerWidth, window.innerHeight) < 720;
+const sphereGeo = small ? new THREE.SphereGeometry(1, 10, 8) : new THREE.SphereGeometry(1, 14, 10);
+const atomMat = new THREE.MeshStandardMaterial({roughness:.42, metalness:.02, transparent:true, opacity:1});
+const glowParam = new URLSearchParams(location.search).get('glow');   /* ?glow=on or ?glow=off overrides the automatic check */
+const fps = {on:glowParam === null, time:0, n:0};   /* measured only while the glow effect is running */
+function setBloom(on, auto){
+  bloomOn = on && canBloom;
+  const b = document.getElementById('glowBtn');
+  if (b){ b.setAttribute('aria-pressed', bloomOn ? 'true' : 'false'); b.textContent = 'Glow effects: ' + (bloomOn ? 'on' : 'off'); b.title = auto ? 'Switched off automatically to keep things smooth' : ''; }
+}
+const atoms = new THREE.InstancedMesh(sphereGeo, atomMat, N);
+atoms.renderOrder = 3;
+const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), col = new THREE.Color();
+const GROUP = e => e >= 3 ? 3 : e;               /* carbon, nitrogen, oxygen, sulfur + selenium */
+const groupOn = [true, true, true, true];
+const groupCount = [0, 0, 0, 0];
+for (let i=0;i<N;i++){ const e = A[i*5+3]; groupCount[GROUP(e)]++; col.setHex(ELCOL[e]); atoms.setColorAt(i,col); }
+function writeAtoms(){
+  for (let i=0;i<N;i++){
+    const e = A[i*5+3], r = groupOn[GROUP(e)] ? ELRAD[e]*0.82 : 0.0001;
+    p.set(A[i*5],A[i*5+1],A[i*5+2]); s.set(r,r,r); m.compose(p,q,s); atoms.setMatrixAt(i,m);
+  }
+  atoms.instanceMatrix.needsUpdate = true;
+}
+writeAtoms(); if (atoms.instanceColor) atoms.instanceColor.needsUpdate = true;
+scene.add(atoms);
+
+/* ---------- chromophore: ball and stick ---------- */
+const chromo = new THREE.Group();
+const chromoMat = new THREE.MeshStandardMaterial({color:0x5be38a, emissive:0x2bd46a, emissiveIntensity:.35, roughness:.3, transparent:true, opacity:0});
+const restMat = new THREE.MeshStandardMaterial({color:0xa9d9bd, roughness:.5, transparent:true, opacity:0});
+const conj = new Set(D.croConj);
+const cp = [];
+for (let i=croStart;i<croEnd;i++){
+  const v = new THREE.Vector3(A[i*5],A[i*5+1],A[i*5+2]); cp.push(v);
+  const on = conj.has(i-croStart);
+  const b = new THREE.Mesh(sphereGeo, on ? chromoMat : restMat); b.position.copy(v); b.scale.setScalar(on ? .42 : .3); b.userData.atomIndex = i; chromo.add(b);
+}
+const bondGeo = new THREE.CylinderGeometry(.16,.16,1,10,1);
+for (let i=0;i<cp.length;i++) for (let j=i+1;j<cp.length;j++){
+  const d = cp[i].distanceTo(cp[j]);
+  if (d < 1.95){
+    const c = new THREE.Mesh(bondGeo, conj.has(i) && conj.has(j) ? chromoMat : restMat);
+    c.position.copy(cp[i]).add(cp[j]).multiplyScalar(.5);
+    c.scale.set(1,d,1);
+    c.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), cp[j].clone().sub(cp[i]).normalize());
+    chromo.add(c);
+  }
+}
+chromo.visible = false; chromo.renderOrder = 4; scene.add(chromo);
+
+/* ---------- backbone tube with variable radius ---------- */
+const CA = D.ca, NR = CA.length/3, SS = D.ss, NUM = D.num;
+let pts = []; for (let i=0;i<NR;i++) pts.push(new THREE.Vector3(CA[i*3],CA[i*3+1],CA[i*3+2]));
+for (let it=0; it<3; it++){ /* smooth the pleat of beta strands so they read as straight bands */
+  const q2 = pts.map(v=>v.clone());
+  for (let i=1;i<NR-1;i++) if (SS[i]==='E') q2[i] = pts[i-1].clone().add(pts[i].clone().multiplyScalar(2)).add(pts[i+1]).multiplyScalar(.25);
+  pts = q2;
+}
+const strandOf = {}; D.strands.slice().sort((a,b)=>a[0]-b[0]).forEach((r,k)=>{ for (let n=r[0];n<=r[1];n++) strandOf[n]=k; });
+const sA = new THREE.Color(0x8fe6df), sB = new THREE.Color(0x7a9cf2);
+function strandColor(i){ const k = strandOf[NUM[i]]; return sA.clone().lerp(sB, (k||0)/10); }
+const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+const isThread = i => NUM[i] >= 56 && NUM[i] <= 72;
+const SEG = NR*8, RAD = 10;
+const frames = curve.computeFrenetFrames(SEG, false);
+let pos = [], nor = [], colr = [], idx = [];
+const cStrand = new THREE.Color(0x86d8ea), cCoil = new THREE.Color(0x7d9cb5), cThread = new THREE.Color(0xf4d38e), cHelix = new THREE.Color(0x7d9cb5);
+const threadMix = [];
+function residueAt(u){ return Math.min(NR-1, Math.max(0, Math.round(u*(NR-1)))); }
+function radiusAt(u){
+  let acc=0, w=0;
+  for (let d=-2; d<=2; d++){
+    const i = residueAt(u + d/(SEG) * 2);
+    const r = SS[i]==='E' ? .95 : (isThread(i) ? .62 : (SS[i]==='H' ? .6 : .32));
+    const ww = 3-Math.abs(d); acc += r*ww; w += ww;
+  }
+  return acc/w;
+}
+for (let i=0;i<=SEG;i++){
+  const u = i/SEG, P = curve.getPointAt(u), Nn = frames.normals[i], B = frames.binormals[i];
+  const ri = residueAt(u), r = radiusAt(u);
+  const c = SS[ri]==='E' ? strandColor(ri) : (isThread(ri) ? cCoil : (SS[ri]==='H' ? cHelix : cCoil));
+  threadMix.push(isThread(ri) ? 1 : 0);
+  for (let j=0;j<=RAD;j++){
+    const v = j/RAD*Math.PI*2, sn = Math.sin(v), cs = -Math.cos(v);
+    const nx = cs*Nn.x + sn*B.x, ny = cs*Nn.y + sn*B.y, nz = cs*Nn.z + sn*B.z;
+    nor.push(nx,ny,nz); pos.push(P.x+r*nx, P.y+r*ny, P.z+r*nz); colr.push(c.r,c.g,c.b);
+  }
+}
+for (let i=0;i<SEG;i++) for (let j=0;j<RAD;j++){
+  const a=i*(RAD+1)+j, b=(i+1)*(RAD+1)+j, c2=(i+1)*(RAD+1)+j+1, d2=i*(RAD+1)+j+1;
+  idx.push(a,b,d2, b,c2,d2);
+}
+const tubeGeo = new THREE.BufferGeometry();
+tubeGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+tubeGeo.setAttribute('normal', new THREE.Float32BufferAttribute(nor,3));
+const colorAttr = new THREE.Float32BufferAttribute(colr,3);
+tubeGeo.setAttribute('color', colorAttr);
+tubeGeo.setIndex(idx);
+const tubeMat = new THREE.MeshStandardMaterial({vertexColors:true, roughness:.38, metalness:.04, transparent:true, opacity:0});
+const tube = new THREE.Mesh(tubeGeo, tubeMat); tube.visible=false; tube.renderOrder = 1; scene.add(tube);
+/* trail: a slightly wider copy of the tube, revealed up to the walking light */
+const trailPos = new Float32Array(pos.length);
+for (let i=0;i<pos.length;i+=3){ trailPos[i]=pos[i]+nor[i]*.14; trailPos[i+1]=pos[i+1]+nor[i+1]*.14; trailPos[i+2]=pos[i+2]+nor[i+2]*.14; }
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos,3));
+trailGeo.setAttribute('normal', new THREE.Float32BufferAttribute(nor,3));
+trailGeo.setIndex(idx); trailGeo.setDrawRange(0,0);
+const trailMat = new THREE.MeshStandardMaterial({color:0xffe7a3, emissive:0x7a5a18, emissiveIntensity:.7, roughness:.4, transparent:true, opacity:0});
+const trail = new THREE.Mesh(trailGeo, trailMat); trail.renderOrder = 2; trail.visible = false; scene.add(trail);
+/* start and end of the chain */
+const endStart = new THREE.Mesh(sphereGeo, new THREE.MeshStandardMaterial({color:0x7cf0c8, emissive:0x2a8f6e, emissiveIntensity:.6, transparent:true, opacity:0}));
+const endEnd = new THREE.Mesh(sphereGeo, new THREE.MeshStandardMaterial({color:0xff9f7a, emissive:0x8f4a2a, emissiveIntensity:.6, transparent:true, opacity:0}));
+endStart.position.copy(curve.getPointAt(0)); endEnd.position.copy(curve.getPointAt(1));
+endStart.scale.setScalar(1.5); endEnd.scale.setScalar(1.5); endStart.renderOrder = endEnd.renderOrder = 5;
+scene.add(endStart, endEnd);
+const th = []; for (let i=0;i<NR;i++) if (isThread(i)) th.push(i);
+const threadCurve = new THREE.CatmullRomCurve3(pts.slice(th[0], th[th.length-1]+1), false, 'centripetal');
+const threadMat = new THREE.MeshStandardMaterial({color:0xf4d38e, roughness:.35, metalness:.05, transparent:true, opacity:0});
+const threadMesh = new THREE.Mesh(new THREE.TubeGeometry(threadCurve, 160, .72, 12, false), threadMat);
+threadMesh.renderOrder = 2; threadMesh.visible = false; scene.add(threadMesh);
+function setThreadHighlight(t){
+  const arr = colorAttr.array;
+  for (let i=0;i<=SEG;i++){ if (!threadMix[i]) continue;
+    const c = cCoil.clone().lerp(cThread, t);
+    for (let j=0;j<=RAD;j++){ const o=(i*(RAD+1)+j)*3; arr[o]=c.r; arr[o+1]=c.g; arr[o+2]=c.b; }
+  }
+  colorAttr.needsUpdate = true;
+}
+
+/* ---------- glow sprites ---------- */
+function glowTexture(){
+  const c = document.createElement('canvas'); c.width=c.height=128;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.25,'rgba(255,255,255,.55)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=gr; g.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+}
+const gtex = glowTexture();
+function sprite(color, size, opacity){
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:gtex, color, transparent:true, opacity, depthWrite:false, depthTest:false, blending:THREE.AdditiveBlending}));
+  sp.scale.setScalar(size); return sp;
+}
+const heart = sprite(0x5be38a, 9, .35); heart.renderOrder = 10; scene.add(heart);
+const pulse = sprite(0xf4f0c8, 6.5, 0); pulse.renderOrder = 11; scene.add(pulse);
+
+/* photons: blue in, green out */
+const photons = [];
+function launchPhotons(nIn, nOut){
+  const now = performance.now();
+  for (let i=0;i<nIn;i++){
+    const dir = new THREE.Vector3().randomDirection ? new THREE.Vector3().randomDirection() : new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize();
+    const sp = sprite(0x6f93ff, 2.8, 0); scene.add(sp);
+    photons.push({sp, dir, t0: now + i*28, dur: 1100, kind:'in'});
+  }
+  for (let i=0;i<nOut;i++){
+    const dir = new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize();
+    const sp = sprite(0x86ffb0, 2.6, 0); scene.add(sp);
+    photons.push({sp, dir, t0: now + 1250 + i*30, dur: 1500, kind:'out'});
+  }
+}
+
+/* ---------- camera control (tween + orbit) ---------- */
+const state = { i:0, tweening:false, t0:0, dur:2400, from:null, to:null,
+  target:new THREE.Vector3(), theta:0, phi:1, radius:80, lastInput:0,
+  atoms:1, tube:0, thread:0, glow:.35, dim:0, flare:0, flareLevel:0, shining:false, lastBurst:0, flareT:-1, shone:false,
+  chromoOp:0, bloomAmt:0, offExtra:0, pulseOp:0, endsOp:0, walk:0, playing:true, speed:1, showEnds:true, spinVel:0 };
+function portraitScale(){ const a = window.innerWidth/window.innerHeight; return a < 1 ? Math.pow(1/a, .75) : 1; }
+function stopCam(i){
+  const st = STOPS[i];
+  const t = new THREE.Vector3(...st.tgt), c = new THREE.Vector3(...st.cam);
+  const portrait = window.innerWidth/window.innerHeight < .85;
+  const off = c.clone().sub(t).multiplyScalar(i===4 ? Math.min(portraitScale(),1.5) : portraitScale()*(portrait && st.distPortrait ? st.distPortrait : 1));
+  return {pos:t.clone().add(off), tgt:t};
+}
+function syncOrbit(){
+  const off = camera.position.clone().sub(state.target);
+  state.radius = off.length(); state.theta = Math.atan2(off.x, off.z);
+  state.phi = Math.acos(Math.min(1,Math.max(-1, off.y/state.radius)));
+}
+function applyOrbit(){
+  const r = state.radius, sp = Math.sin(state.phi);
+  camera.position.set(state.target.x + r*sp*Math.sin(state.theta), state.target.y + r*Math.cos(state.phi), state.target.z + r*sp*Math.cos(state.theta));
+  camera.lookAt(state.target);
+}
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const smoother = t => t*t*t*(t*(t*6-15)+10);
+function sph(off){ const r = off.length(); return {r, th:Math.atan2(off.x, off.z), ph:Math.acos(Math.min(1,Math.max(-1, off.y/r)))}; }
+
+/* ---------- UI ---------- */
+const $ = id => document.getElementById(id);
+const stopsEl = $('stops');
+STOPS.forEach((st,i) => {
+  const li = document.createElement('li'), b = document.createElement('button');
+  b.innerHTML = '<span class="label">'+(i+1)+'. '+st.name+'</span><span class="tick"></span>';
+  b.setAttribute('aria-label', 'Stop '+(i+1)+': '+st.name);
+  b.addEventListener('click', () => go(i)); li.appendChild(b); stopsEl.appendChild(li);
+});
+$('prev').addEventListener('click', () => go(state.i-1));
+$('next').addEventListener('click', () => go(state.i===STOPS.length-1 ? 0 : state.i+1));
+$('shine').addEventListener('click', shine);
+$('glowBtn').addEventListener('click', () => setBloom(!bloomOn, false));
+$('recentre').addEventListener('click', recentre);
+if (!canBloom) $('glowBtn').hidden = true;
+if (glowParam === 'off') setBloom(false, false);
+const about = $('about'); let aboutReturn = null;
+function openAbout(){ aboutReturn = document.activeElement; about.hidden = false; $('aboutClose').focus(); }
+function closeAbout(){ about.hidden = true; if (aboutReturn) aboutReturn.focus(); }
+$('aboutBtn').addEventListener('click', openAbout);
+$('aboutClose').addEventListener('click', closeAbout);
+about.addEventListener('click', e => { if (e.target === about) closeAbout(); });
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && !about.hidden) closeAbout(); });
+
+function go(i){
+  if (i<0 || i>=STOPS.length) return;
+  if (state.shining) setShine(false);
+  state.i = i; const st = STOPS[i];
+  $('step').textContent = 'Stop '+(i+1)+' of '+STOPS.length;
+  $('title').textContent = st.title; $('body').textContent = st.body; $('legend').textContent = st.legend || ''; $('live').textContent = '';
+  $('prev').disabled = i===0;
+  $('next').textContent = i===STOPS.length-1 ? 'Start again' : 'Next stop';
+  $('shine').hidden = !st.shine;
+  stopsEl.querySelectorAll('button').forEach((b,j)=>{ if (j===i) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current'); });
+  const to = stopCam(i);
+  startTween(to, st, reduce ? 1 : (i===4 ? 3600 : 3000));
+  if (i !== 0 && !groupOn.every(Boolean)){ groupOn.fill(true); writeAtoms(); }
+  renderControls(i);
+  markT = -1; $('atomTag').style.opacity = 0;
+}
+const tmpV = new THREE.Vector3();
+function placeTag(el, pos3, op){
+  if (op < .01){ el.style.opacity = 0; return; }
+  tmpV.copy(pos3).project(camera);
+  if (tmpV.z > 1){ el.style.opacity = 0; return; }
+  el.style.left = ((tmpV.x+1)/2*window.innerWidth)+'px';
+  el.style.top = ((1-tmpV.y)/2*window.innerHeight)+'px';
+  el.style.opacity = op;
+}
+const GROUPS = [
+  {name:'Carbon', color:'#b9d3dc'}, {name:'Nitrogen', color:'#6f98ec'},
+  {name:'Oxygen', color:'#e9837a'}, {name:'Sulfur and selenium', color:'#f2d36b'}
+];
+function renderControls(i){
+  const box = $('controls'); box.innerHTML = '';
+  if (i === 0){
+    GROUPS.forEach((g,k) => {
+      const b = document.createElement('button');
+      b.className = 'chip toggle'; b.setAttribute('aria-pressed', groupOn[k] ? 'true' : 'false');
+      b.innerHTML = '<span class="dot" style="background:'+g.color+'"></span>'+g.name+' <span class="count">'+groupCount[k].toLocaleString('en-US')+'</span>';
+      b.setAttribute('aria-label', (groupOn[k] ? 'Hide ' : 'Show ')+g.name.toLowerCase()+' atoms, '+groupCount[k]);
+      b.addEventListener('click', () => {
+        groupOn[k] = !groupOn[k]; writeAtoms();
+        b.setAttribute('aria-pressed', groupOn[k] ? 'true' : 'false');
+        b.setAttribute('aria-label', (groupOn[k] ? 'Hide ' : 'Show ')+g.name.toLowerCase()+' atoms, '+groupCount[k]);
+      });
+      box.appendChild(b);
+    });
+  } else if (STOPS[i].pulse){
+    const play = document.createElement('button');
+    play.className = 'chip'; play.textContent = state.playing ? 'Pause' : 'Play';
+    play.addEventListener('click', () => { state.playing = !state.playing; play.textContent = state.playing ? 'Pause' : 'Play'; });
+    const lab = document.createElement('label'); lab.className = 'speed';
+    lab.innerHTML = 'Speed <input type="range" min="0.25" max="2" step="0.25" value="'+state.speed+'"> <output>'+state.speed+'×</output>';
+    const range = lab.querySelector('input'), out = lab.querySelector('output');
+    range.addEventListener('input', () => { state.speed = parseFloat(range.value); out.textContent = state.speed+'×'; });
+    const ends = document.createElement('button');
+    ends.className = 'chip toggle'; ends.textContent = 'Start and end'; ends.setAttribute('aria-pressed', state.showEnds ? 'true' : 'false');
+    ends.addEventListener('click', () => { state.showEnds = !state.showEnds; ends.setAttribute('aria-pressed', state.showEnds ? 'true' : 'false'); });
+    box.append(play, lab, ends);
+  }
+}
+function startTween(to, st, dur){
+  state.from = {pos:camera.position.clone(), tgt:state.target.clone(), atoms:state.atoms, tube:state.tube, thread:state.thread, glow:state.glow, dim:state.dim};
+  state.to = {pos:to.pos, tgt:to.tgt, atoms:st.atoms, tube:st.tube, thread:st.thread, glow: st.glow, dim: st.dim||0};
+  state.from.s = sph(state.from.pos.clone().sub(state.from.tgt)); state.to.s = sph(to.pos.clone().sub(to.tgt));
+  let dth = state.to.s.th - state.from.s.th; while (dth > Math.PI) dth -= 2*Math.PI; while (dth < -Math.PI) dth += 2*Math.PI;
+  state.dth = dth; state.spinVel = 0;
+  state.t0 = performance.now(); state.dur = dur; state.tweening = true;
+}
+function recentre(){ startTween(stopCam(state.i), STOPS[state.i], reduce ? 1 : 1400); state.lastInput = performance.now(); }
+function setShine(on){
+  state.shining = on;
+  const b = $('shine');
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  b.textContent = on ? 'Turn off blue light' : 'Shine blue light';
+  if (on){
+    state.flareT = performance.now(); state.lastBurst = state.flareT;
+    if (!reduce) launchPhotons(22, 26);
+    $('live').textContent = 'Blue light in, green light out.';
+  } else {
+    state.flareT = -1;
+    photons.forEach(ph => { scene.remove(ph.sp); ph.sp.material.dispose(); }); photons.length = 0;
+    $('live').textContent = 'Blue light off. The glow fades.';
+  }
+}
+function shine(){ setShine(!state.shining); }
+
+/* input: orbit + zoom */
+const pointers = new Map(); let pinch0 = 0, rad0 = 0;
+const tapInfo = {x:0, y:0, t:0, moved:false};
+let panMode = false, lastMid = null;
+const _r = new THREE.Vector3(), _u = new THREE.Vector3();
+function panBy(dx, dy){
+  const perPx = 2*state.radius*Math.tan(camera.fov*Math.PI/360)/window.innerHeight;
+  camera.updateMatrix(); _r.setFromMatrixColumn(camera.matrix, 0); _u.setFromMatrixColumn(camera.matrix, 1);
+  state.target.addScaledVector(_r, -dx*perPx).addScaledVector(_u, dy*perPx);
+  const home = new THREE.Vector3(...STOPS[state.i].tgt), off = state.target.clone().sub(home);
+  if (off.length() > 35) state.target.copy(home.add(off.setLength(35)));
+  applyOrbit();
+}
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+const ELNAME = ['Carbon', 'Nitrogen', 'Oxygen', 'Sulfur', 'Selenium'];
+const RESNAME = {ALA:'alanine', ARG:'arginine', ASN:'asparagine', ASP:'aspartate', CYS:'cysteine', GLN:'glutamine', GLU:'glutamate', GLY:'glycine', HIS:'histidine', ILE:'isoleucine', LEU:'leucine', LYS:'lysine', MET:'methionine', MSE:'selenomethionine (methionine in the natural protein)', PHE:'phenylalanine', PRO:'proline', SER:'serine', THR:'threonine', TRP:'tryptophan', TYR:'tyrosine', VAL:'valine'};
+const mark = sprite(0xffffff, 4.5, 0); mark.renderOrder = 12; scene.add(mark); let markT = -1;
+const ELHEX = ['#b9d3dc', '#6f98ec', '#e9837a', '#f2d36b', '#e8a857'];
+function residueText(i){
+  const ri = A[i*5+4], rn = D.rn[ri];
+  if (rn === 'CRO') return 'Chromophore, made from amino acids 65 to 67';
+  const name = RESNAME[rn] || rn.toLowerCase();
+  return 'Amino acid ' + NUM[ri] + ': ' + name.charAt(0).toUpperCase() + name.slice(1);
+}
+function describeAtom(i){ return ELNAME[A[i*5+3]] + ' atom. ' + residueText(i) + '.'; }
+let tagAtom = -1;
+function tapAt(x, y){
+  ndc.set(x/window.innerWidth*2-1, -(y/window.innerHeight)*2+1);
+  ray.setFromCamera(ndc, camera);
+  let hit = null;
+  if (state.atoms > .5){ const h = ray.intersectObject(atoms); if (h.length && h[0].instanceId !== undefined) hit = {i:h[0].instanceId, d:h[0].distance, p:h[0].point}; }
+  if (chromo.visible && state.chromoOp > .5){
+    const h = ray.intersectObjects(chromo.children).filter(x => x.object.userData.atomIndex !== undefined);
+    if (h.length && (!hit || h[0].distance < hit.d)) hit = {i:h[0].object.userData.atomIndex, d:h[0].distance, p:h[0].object.position};
+  }
+  if (!hit) return;
+  $('live').textContent = describeAtom(hit.i);
+  $('atomEl').textContent = ELNAME[A[hit.i*5+3]]; $('atomDot').style.background = ELHEX[A[hit.i*5+3]];
+  $('atomRes').textContent = residueText(hit.i);
+  tagAtom = hit.i;
+  mark.position.set(A[hit.i*5], A[hit.i*5+1], A[hit.i*5+2]); markT = performance.now();
+}
+canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  tapInfo.x = e.clientX; tapInfo.y = e.clientY; tapInfo.t = performance.now(); tapInfo.moved = pointers.size > 1;
+  panMode = e.button === 2 || e.button === 1 || e.shiftKey;
+  if (pointers.size === 2){ const [a,b]=[...pointers.values()]; lastMid = {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
+  if (pointers.size===2){ const [a,b]=[...pointers.values()]; pinch0=Math.hypot(a.x-b.x,a.y-b.y); rad0=state.radius; } state.lastInput=performance.now(); });
+canvas.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId) || state.tweening) { if (pointers.has(e.pointerId)) pointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); return; }
+  const prev = pointers.get(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if (Math.hypot(e.clientX-tapInfo.x, e.clientY-tapInfo.y) > 6) tapInfo.moved = true;
+  if (pointers.size===1){
+    if (panMode) panBy(e.clientX-prev.x, e.clientY-prev.y);
+    else { state.theta -= (e.clientX-prev.x)*0.006; state.phi = Math.min(3.05, Math.max(.08, state.phi - (e.clientY-prev.y)*0.006)); }
+  } else if (pointers.size===2){
+    const [a,b]=[...pointers.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y);
+    if (pinch0>0) state.radius = clampR(rad0*pinch0/d);
+    const mid = {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+    if (lastMid) panBy(mid.x-lastMid.x, mid.y-lastMid.y);
+    lastMid = mid;
+  }
+  state.lastInput = performance.now(); applyOrbit();
+});
+['pointerup','pointercancel','pointerleave'].forEach(t => canvas.addEventListener(t, e => {
+  if (t === 'pointerup' && !tapInfo.moved && pointers.size === 1 && performance.now()-tapInfo.t < 450 && !state.tweening) tapAt(e.clientX, e.clientY);
+  pointers.delete(e.pointerId); pinch0=0; lastMid=null; if (pointers.size===0) panMode=false; }));
+canvas.addEventListener('wheel', e => { e.preventDefault(); if (state.tweening) return; state.radius = clampR(state.radius*Math.exp(e.deltaY*0.0012)); state.lastInput=performance.now(); applyOrbit(); }, {passive:false});
+function clampR(r){ return Math.min(state.i===4 ? 40 : 170, Math.max(state.i===4 ? 4 : 8, r)); }
+window.addEventListener('keydown', e => {
+  if (e.key==='ArrowRight') go(state.i+1);
+  else if (e.key==='ArrowLeft') go(state.i-1);
+  else if ((e.key==='b'||e.key==='B') && STOPS[state.i].shine) shine();
+  else if (e.key==='r'||e.key==='R') recentre();
+});
+
+function applyViewOffset(){
+  const w = window.innerWidth, h = window.innerHeight;
+  if (w/h > 1.15 && w > 720) camera.setViewOffset(w,h,-Math.round(w*.1),0,w,h);
+  else if (w/h < .85) camera.setViewOffset(w,h,0,Math.round(h*(.17 + state.offExtra)),w,h);
+  else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w,h,false); if (composer) composer.setSize(w,h); camera.aspect = w/h;
+  applyViewOffset();
+}
+window.addEventListener('resize', resize); resize();
+
+/* ---------- loop ---------- */
+const lerp = (a,b,t)=>a+(b-a)*t;
+let lastNow = performance.now();
+const approach = (v, target, rate, dt) => v + (target - v) * Math.min(1, dt*rate);
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min(.05, Math.max(0, (now - lastNow)/1000)); lastNow = now;
+  if (state.tweening){
+    const t = Math.min(1,(now-state.t0)/state.dur), e = smoother(t), F = state.from, T = state.to;
+    const e2 = smoother(t);
+    state.target.lerpVectors(F.tgt, T.tgt, e2);
+    const r = Math.exp(lerp(Math.log(F.s.r), Math.log(T.s.r), e2)), th = F.s.th + state.dth*e2, ph = lerp(F.s.ph, T.s.ph, e2);
+    camera.position.set(state.target.x + r*Math.sin(ph)*Math.sin(th), state.target.y + r*Math.cos(ph), state.target.z + r*Math.sin(ph)*Math.cos(th));
+    camera.lookAt(state.target);
+    state.atoms = lerp(F.atoms,T.atoms,e); state.tube = lerp(F.tube,T.tube,e); state.thread = lerp(F.thread,T.thread,e); state.glow = lerp(F.glow,T.glow,e); state.dim = lerp(F.dim,T.dim,e);
+    if (t>=1){ state.tweening=false; syncOrbit(); }
+  }
+  const wantOff = window.innerWidth/window.innerHeight < .85 ? (STOPS[state.i].offPortrait || 0) : 0;
+  if (Math.abs(state.offExtra - wantOff) > .0005){ state.offExtra = approach(state.offExtra, wantOff, 2.5, dt); applyViewOffset(); }
+  /* gentle auto-turn that eases in and out, time-based */
+  const wantSpin = !state.tweening && STOPS[state.i].spin && !reduce && now-state.lastInput > 2500;
+  state.spinVel += ((wantSpin ? .09 : 0) - state.spinVel) * Math.min(1, dt*1.5);
+  if (!state.tweening && state.spinVel > .0005 && pointers.size === 0){ state.theta += state.spinVel*dt; applyOrbit(); }
+  atomMat.opacity = state.atoms; atoms.visible = state.atoms > .01; atomMat.depthWrite = true;
+  tubeMat.opacity = state.tube; tube.visible = state.tube > .01; tubeMat.depthWrite = state.tube > .95;
+  threadMat.opacity = state.thread; threadMesh.visible = state.thread > .01; threadMat.depthWrite = state.thread > .95;
+  state.chromoOp = approach(state.chromoOp, STOPS[state.i].chromo ? 1 : 0, 2.2, dt);
+  chromo.visible = state.chromoOp > .01; chromoMat.opacity = state.chromoOp; restMat.opacity = state.chromoOp*.75; chromoMat.depthWrite = state.chromoOp > .95;
+
+  /* chromophore flare after blue light */
+  let target = 0;
+  if (state.shining && state.flareT > 0){
+    const dt = now - state.flareT - (reduce ? 0 : 1150);
+    if (dt > 0) target = dt < 400 ? dt/400 : Math.max(.7, 1 - (dt-400)/2500*.3);
+    if (!reduce && now - state.lastBurst > 1500){ state.lastBurst = now; launchPhotons(6, 8); }
+  }
+  state.flareLevel += (target - state.flareLevel) * (target > state.flareLevel ? .25 : .06);
+  const flare = state.flareLevel;
+  const breathe = reduce ? 0 : Math.sin(now*0.0016)*.06;
+  const HS = [9,9,9,9,5,22][state.i];
+  hemi.intensity = .8 - .5*state.dim; key.intensity = .85 - .6*state.dim;
+  heart.material.opacity = Math.min(state.i===4 ? .75 : 1, state.glow*.8 + flare*.55 + breathe) * (bloomOn ? .85 : 1);
+  heart.scale.setScalar(HS + flare*HS*.5);
+  chromoMat.emissiveIntensity = .35 + flare*(bloomOn ? 1.25 : 1.8);
+  greenLight.intensity = flare*3.4 + state.dim*3;
+
+  /* pulse walking the chain */
+  const walking = STOPS[state.i].pulse && !state.tweening;
+  state.pulseOp = approach(state.pulseOp, walking ? 1 : 0, 3, dt);
+  state.endsOp = approach(state.endsOp, walking && state.showEnds ? 1 : 0, 3, dt);
+  if (walking && state.playing){ state.walk += dt * state.speed / 16; if (state.walk > 1) state.walk = 0; }
+  const u = Math.min(1, state.walk), P = curve.getPointAt(u);
+  pulse.position.copy(P); pulse.material.opacity = .95*state.pulseOp;
+  trail.visible = state.pulseOp > .01; trailMat.opacity = .9*state.pulseOp;
+  trailGeo.setDrawRange(0, Math.floor(u*SEG)*RAD*6);
+  endStart.material.opacity = endEnd.material.opacity = state.endsOp;
+  endStart.visible = endEnd.visible = state.endsOp > .01;
+  placeTag($('tagStart'), endStart.position, state.endsOp);
+  placeTag($('tagEnd'), endEnd.position, state.endsOp);
+  if (walking){
+    const n = NUM[residueAt(u)];
+    $('live').textContent = n===66 ? 'Now at amino acids 65 to 67, the future light source' : 'Now at amino acid '+n;
+  }
+
+  if (markT > 0){
+    const age = (now-markT)/1000, a = age < 4 ? 1 : Math.max(0, 1 - (age-4)/.8);
+    mark.material.opacity = a * (.75 + .25*Math.sin(age*6));
+    const el = $('atomTag'); tmpV.copy(mark.position).project(camera);
+    if (tmpV.z > 1 || state.tweening){ el.style.opacity = 0; }
+    else {
+      const W = window.innerWidth, x = (tmpV.x+1)/2*W, y = (1-tmpV.y)/2*window.innerHeight;
+      const tw = el.offsetWidth, th2 = el.offsetHeight;
+      let lx, ly;
+      if (x + 18 + tw < W - 8){ lx = x + 18; ly = y - th2/2; }          /* right of the atom */
+      else if (x - 18 - tw > 8){ lx = x - 18 - tw; ly = y - th2/2; }    /* left of the atom */
+      else { lx = Math.min(W - tw - 8, Math.max(8, x - tw/2)); ly = y - th2 - 22; }  /* above it */
+      el.style.transform = 'none'; el.style.left = lx+'px'; el.style.top = Math.max(8, ly)+'px';
+      el.style.opacity = a;
+    }
+    if (a <= 0){ markT = -1; el.style.opacity = 0; }
+  } else { mark.material.opacity = 0; }
+
+  /* photons */
+  for (let i=photons.length-1;i>=0;i--){
+    const ph = photons[i], t = (now-ph.t0)/ph.dur;
+    if (t<0) continue;
+    if (t>=1){ scene.remove(ph.sp); ph.sp.material.dispose(); photons.splice(i,1); continue; }
+    const r = ph.kind==='in' ? lerp(38,0.5,ease(t)) : lerp(1,46,t);
+    ph.sp.position.copy(ph.dir).multiplyScalar(r);
+    ph.sp.material.opacity = ph.kind==='in' ? Math.min(1,t*4)*(1-t*.3) : (1-t);
+  }
+
+  $('dist').textContent = Math.round(camera.position.length());
+  const BLOOM = [0, 0, 0, 0, .45, .95];
+  state.bloomAmt = approach(state.bloomAmt, BLOOM[state.i] + flare*.85, 2.5, dt);
+  if (bloomOn && composer && state.bloomAmt > .02){
+    bloomPass.strength = state.bloomAmt; composer.render();
+    /* glow guard: if the device struggles while glowing, switch the effect off */
+    if (fps.on){ fps.n++; fps.time += dt; if (fps.time > 4){ fps.on = false; if (fps.n/fps.time < 28) setBloom(false, true); } }
+  } else renderer.render(scene, camera);
+}
+
+/* start */
+const first = stopCam(0);
+camera.position.copy(first.pos.clone().multiplyScalar(1.6)); state.target.copy(first.tgt); camera.lookAt(state.target);
+go(0);
+requestAnimationFrame(frame);
+const ld = $('loading'); ld.style.opacity = 0; setTimeout(()=>ld.remove(), 700);
+})();
+</script>
+</body>
+</html>
