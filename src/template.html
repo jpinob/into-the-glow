@@ -47,6 +47,8 @@
 .card,.atom-tag,.sources .panel{
   --paper:rgba(8,26,52,.86); --ink:#E7F1F7; --ink-soft:#A3BDD0; --line:rgba(231,241,247,.16);
   --green:#6BE89A; --chip:rgba(231,241,247,.08); --on-ink:#051431;
+  /* #3D66F5: white label 4.75:1, button vs panel >= 3.2:1 */
+  --blue:#3D66F5; color-scheme:dark;
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
@@ -120,6 +122,7 @@ body{
 .btn.ghost{background:transparent}
 .btn.shine{background:var(--blue);color:#fff;border-color:transparent;margin-top:12px}
 .btn.shine[hidden]{display:none}
+.btn.shine[aria-pressed="true"]{box-shadow:inset 0 0 0 2px #fff}
 .btn:disabled{opacity:.4;cursor:default}
 .btn:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
 .hint{margin:10px 0 0;font-size:13px;color:var(--ink-soft)}
@@ -512,7 +515,7 @@ function launchPhotons(nIn, nOut){
 const state = { i:0, tweening:false, t0:0, dur:2400, from:null, to:null,
   target:new THREE.Vector3(), theta:0, phi:1, radius:80, lastInput:0,
   atoms:1, tube:0, thread:0, glow:.35, dim:0, flare:0, flareLevel:0, shining:false, lastBurst:0, flareT:-1, shone:false,
-  chromoOp:0, bloomAmt:0, offExtra:0, pulseOp:0, endsOp:0, walk:0, playing:true, speed:1, showEnds:true, spinVel:0, collapsed:false };
+  chromoOp:0, bloomAmt:0, offExtra:0, zoomGoal:1, pulseOp:0, endsOp:0, walk:0, playing:true, speed:1, showEnds:true, spinVel:0, collapsed:false };
 function portraitScale(){ const a = window.innerWidth/window.innerHeight; return a < 1 ? Math.pow(1/a, .75) : 1; }
 function stopCam(i){
   const st = STOPS[i];
@@ -668,7 +671,7 @@ const tapInfo = {x:0, y:0, t:0, moved:false};
 let panMode = false, lastMid = null;
 const _r = new THREE.Vector3(), _u = new THREE.Vector3();
 function panBy(dx, dy){
-  const perPx = 2*state.radius*Math.tan(camera.fov*Math.PI/360)/window.innerHeight;
+  const perPx = 2*state.radius*Math.tan(camera.fov*Math.PI/360)/window.innerHeight/camera.zoom;
   camera.updateMatrix(); _r.setFromMatrixColumn(camera.matrix, 0); _u.setFromMatrixColumn(camera.matrix, 1);
   state.target.addScaledVector(_r, -dx*perPx).addScaledVector(_u, dy*perPx);
   const home = new THREE.Vector3(...STOPS[state.i].tgt), off = state.target.clone().sub(home);
@@ -740,14 +743,17 @@ window.addEventListener('keydown', e => {
 
 function applyViewOffset(){
   const w = window.innerWidth, h = window.innerHeight;
-  if (w/h > 1.15 && w > 720) camera.setViewOffset(w,h,-Math.round(w*.1),0,w,h);
+  if (w/h > 1.15 && w > 720){ camera.setViewOffset(w,h,-Math.round(w*.1),0,w,h); state.zoomGoal = 1; }
   else if (w/h < .85){
     // centre the model in the free band between the top UI and the card
     const top = Math.max(...['.masthead','.gauge','.sources summary'].map(s => document.querySelector(s).getBoundingClientRect().bottom));
     const cardTop = cardEl.getBoundingClientRect().top;
-    camera.setViewOffset(w,h,0,Math.round(h/2 - (top + cardTop)/2 + h*state.offExtra),w,h);
+    // Reason: below ~340px of free band the model no longer fits; zoom out in proportion
+    state.zoomGoal = Math.max(.5, Math.min(1, (cardTop - top) / 340));
+    // the per-stop lift shrinks with the model, or it pushes it under the masthead
+    camera.setViewOffset(w,h,0,Math.round(h/2 - (top + cardTop)/2 + h*state.offExtra*state.zoomGoal),w,h);
   }
-  else camera.clearViewOffset();
+  else { camera.clearViewOffset(); state.zoomGoal = 1; }
   camera.updateProjectionMatrix();
 }
 function resize(){
@@ -776,6 +782,7 @@ function frame(now){
   }
   const wantOff = window.innerWidth/window.innerHeight < .85 ? (folded() ? -.12 : (STOPS[state.i].offPortrait || 0)) : 0;
   if (Math.abs(state.offExtra - wantOff) > .0005){ state.offExtra = approach(state.offExtra, wantOff, 2.5, dt); applyViewOffset(); }
+  if (Math.abs(camera.zoom - state.zoomGoal) > .001){ camera.zoom = reduce ? state.zoomGoal : approach(camera.zoom, state.zoomGoal, 6, dt); camera.updateProjectionMatrix(); }
   /* gentle auto-turn that eases in and out, time-based */
   const wantSpin = !state.tweening && STOPS[state.i].spin && !reduce && now-state.lastInput > 2500;
   state.spinVel += ((wantSpin ? .09 : 0) - state.spinVel) * Math.min(1, dt*1.5);
