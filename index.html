@@ -43,6 +43,11 @@
   color-scheme: dark;
 }
 *{box-sizing:border-box}
+/* Panels that float over the scene stay dark in both themes: the scene is always dark */
+.card,.atom-tag,.sources .panel{
+  --paper:rgba(8,26,52,.86); --ink:#E7F1F7; --ink-soft:#A3BDD0; --line:rgba(231,241,247,.16);
+  --green:#6BE89A; --chip:rgba(231,241,247,.08); --on-ink:#051431;
+}
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
 html,body{margin:0;height:100%;overflow:hidden}
@@ -118,6 +123,7 @@ body{
 .btn:disabled{opacity:.4;cursor:default}
 .btn:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
 .hint{margin:10px 0 0;font-size:13px;color:var(--ink-soft)}
+.read-more{display:none}
 
 .sources{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:min(360px,calc(100% - 36px));color:#EAF4F9;font-size:13px;text-align:right}
 .sources summary{cursor:pointer;opacity:.8;list-style:none}
@@ -158,11 +164,17 @@ body{
   .card h2{font-size:23px}
   .card .body{min-height:0}
   .card .head .step{margin:0}
+  .card .live{min-height:0}
+  /* two levels on phones: "Hide text" folds the whole card; "More" opens the text that is clamped to two lines */
   .fold{display:inline-flex}
   .card.collapsed .more{grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows .3s ease, visibility 0s .3s}
   .card.collapsed h2{margin-bottom:0}
   .card.collapsed .live:empty{display:none}
   .card.collapsed .actions{margin-top:10px}
+  .card:not(.open) .body{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+  .card:not(.open) .extra{display:none}
+  .read-more{display:inline-block;font:inherit;font-size:14px;font-weight:700;color:var(--ink);background:transparent;border:0;padding:6px 0 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .read-more:focus-visible{outline:3px solid var(--glow);outline-offset:2px;border-radius:4px}
   .hint{display:none}
   .chip{font-size:13px;padding:5px 10px;gap:6px}
   .actions .btn{font-size:15px;padding:9px 14px}
@@ -221,8 +233,11 @@ body{
   <h2 id="title">Meet GFP</h2>
   <div class="more" id="more"><div>
     <p class="body" id="body"></p>
-    <p class="legend" id="legend"></p>
-    <div class="controls" id="controls"></div>
+    <button class="read-more" id="readMore" aria-expanded="false" aria-controls="extra">More</button>
+    <div class="extra" id="extra">
+      <p class="legend" id="legend"></p>
+      <div class="controls" id="controls"></div>
+    </div>
   </div></div>
   <p class="live" id="live"></p>
   <button class="btn shine" id="shine" aria-pressed="false" hidden>Shine blue light</button>
@@ -534,18 +549,22 @@ $('next').addEventListener('click', () => go(state.i===STOPS.length-1 ? 0 : stat
 $('shine').addEventListener('click', shine);
 $('glowBtn').addEventListener('click', () => setBloom(!bloomOn, false));
 $('recentre').addEventListener('click', recentre);
+const cardEl = $('card');
 /* phone: fold the card down to title and buttons so the model stays visible.
    Only CSS hides the text, so chips, speed and play keep their state. */
 const phoneMQ = window.matchMedia('(max-width:720px)');
 const folded = () => state.collapsed && phoneMQ.matches;
 function setCollapsed(on){
   state.collapsed = on;
-  $('card').classList.toggle('collapsed', on);
+  cardEl.classList.toggle('collapsed', on);
   $('fold').setAttribute('aria-expanded', on ? 'false' : 'true');
   $('foldLabel').textContent = on ? 'Show text' : 'Hide text';
   if (on && $('more').contains(document.activeElement)) $('fold').focus();
 }
 $('fold').addEventListener('click', () => setCollapsed(!state.collapsed));
+/* phone, card unfolded: body clamped to two lines, legend and controls behind More/Less */
+function setOpen(on){ cardEl.classList.toggle('open', on); const m = $('readMore'); m.setAttribute('aria-expanded', on ? 'true' : 'false'); m.textContent = on ? 'Less' : 'More'; requestAnimationFrame(applyViewOffset); }
+$('readMore').addEventListener('click', () => setOpen(!cardEl.classList.contains('open')));
 if (!canBloom) $('glowBtn').hidden = true;
 if (glowParam === 'off') setBloom(false, false);
 const about = $('about'); let aboutReturn = null;
@@ -571,6 +590,7 @@ function go(i){
   if (i !== 0 && !groupOn.every(Boolean)){ groupOn.fill(true); writeAtoms(); }
   renderControls(i);
   markT = -1; $('atomTag').style.opacity = 0;
+  setOpen(false);
 }
 const tmpV = new THREE.Vector3();
 function placeTag(el, pos3, op){
@@ -719,7 +739,11 @@ window.addEventListener('keydown', e => {
 function applyViewOffset(){
   const w = window.innerWidth, h = window.innerHeight;
   if (w/h > 1.15 && w > 720) camera.setViewOffset(w,h,-Math.round(w*.1),0,w,h);
-  else if (w/h < .85) camera.setViewOffset(w,h,0,Math.round(h*(.17 + state.offExtra)),w,h);
+  else if (w/h < .85){
+    // lift the model in proportion to how much of the screen the card covers
+    const k = Math.min(1, Math.max(.35, cardEl.getBoundingClientRect().height / (h*.52)));
+    camera.setViewOffset(w,h,0,Math.round(h*(.17*k + state.offExtra)),w,h);
+  }
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
