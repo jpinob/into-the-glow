@@ -79,6 +79,14 @@ body{
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 18px 50px rgba(0,10,30,.28)
 }
 .card .step{margin:0 0 4px;font-size:14px;color:var(--ink-soft)}
+.card .head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card .head .step{margin:0}
+.fold{display:none;font:inherit;font-size:14px;font-weight:700;align-items:center;gap:6px;min-height:44px;margin:-10px -8px -8px 0;padding:0 8px;border:0;background:none;color:var(--ink);cursor:pointer;border-radius:999px}
+.fold .chev{display:inline-block;width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .25s}
+.fold[aria-expanded="false"] .chev{transform:translateY(2px) rotate(-135deg)}
+.fold:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
+.card .more{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease, visibility 0s}
+.card .more > div{min-height:0;overflow:hidden}
 .card h2{font-family:var(--serif);font-weight:500;font-size:28px;line-height:1.1;margin:0 0 8px}
 .card .body{margin:0}
 .card .legend{margin:6px 0 0;font-size:14px;color:var(--ink-soft)}
@@ -149,6 +157,12 @@ body{
   .card{left:10px;right:10px;width:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);padding:16px 16px 14px;border-radius:16px}
   .card h2{font-size:23px}
   .card .body{min-height:0}
+  .card .head .step{margin:0}
+  .fold{display:inline-flex}
+  .card.collapsed .more{grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows .3s ease, visibility 0s .3s}
+  .card.collapsed h2{margin-bottom:0}
+  .card.collapsed .live:empty{display:none}
+  .card.collapsed .actions{margin-top:10px}
   .hint{display:none}
   .chip{font-size:13px;padding:5px 10px;gap:6px}
   .actions .btn{font-size:15px;padding:9px 14px}
@@ -199,12 +213,17 @@ body{
   <button class="glow-btn" id="glowBtn" aria-pressed="true">Glow effects: on</button>
 </nav>
 
-<section class="card" aria-live="polite">
-  <p class="step" id="step">Stop 1 of 6</p>
+<section class="card" id="card" aria-live="polite">
+  <div class="head">
+    <p class="step" id="step">Stop 1 of 6</p>
+    <button class="fold" id="fold" aria-expanded="true" aria-controls="more"><span id="foldLabel">Hide text</span><span class="chev" aria-hidden="true"></span></button>
+  </div>
   <h2 id="title">Meet GFP</h2>
-  <p class="body" id="body"></p>
-  <p class="legend" id="legend"></p>
-  <div class="controls" id="controls"></div>
+  <div class="more" id="more"><div>
+    <p class="body" id="body"></p>
+    <p class="legend" id="legend"></p>
+    <div class="controls" id="controls"></div>
+  </div></div>
   <p class="live" id="live"></p>
   <button class="btn shine" id="shine" aria-pressed="false" hidden>Shine blue light</button>
   <div class="actions">
@@ -478,7 +497,7 @@ function launchPhotons(nIn, nOut){
 const state = { i:0, tweening:false, t0:0, dur:2400, from:null, to:null,
   target:new THREE.Vector3(), theta:0, phi:1, radius:80, lastInput:0,
   atoms:1, tube:0, thread:0, glow:.35, dim:0, flare:0, flareLevel:0, shining:false, lastBurst:0, flareT:-1, shone:false,
-  chromoOp:0, bloomAmt:0, offExtra:0, pulseOp:0, endsOp:0, walk:0, playing:true, speed:1, showEnds:true, spinVel:0 };
+  chromoOp:0, bloomAmt:0, offExtra:0, pulseOp:0, endsOp:0, walk:0, playing:true, speed:1, showEnds:true, spinVel:0, collapsed:false };
 function portraitScale(){ const a = window.innerWidth/window.innerHeight; return a < 1 ? Math.pow(1/a, .75) : 1; }
 function stopCam(i){
   const st = STOPS[i];
@@ -515,6 +534,18 @@ $('next').addEventListener('click', () => go(state.i===STOPS.length-1 ? 0 : stat
 $('shine').addEventListener('click', shine);
 $('glowBtn').addEventListener('click', () => setBloom(!bloomOn, false));
 $('recentre').addEventListener('click', recentre);
+/* phone: fold the card down to title and buttons so the model stays visible.
+   Only CSS hides the text, so chips, speed and play keep their state. */
+const phoneMQ = window.matchMedia('(max-width:720px)');
+const folded = () => state.collapsed && phoneMQ.matches;
+function setCollapsed(on){
+  state.collapsed = on;
+  $('card').classList.toggle('collapsed', on);
+  $('fold').setAttribute('aria-expanded', on ? 'false' : 'true');
+  $('foldLabel').textContent = on ? 'Show text' : 'Hide text';
+  if (on && $('more').contains(document.activeElement)) $('fold').focus();
+}
+$('fold').addEventListener('click', () => setCollapsed(!state.collapsed));
 if (!canBloom) $('glowBtn').hidden = true;
 if (glowParam === 'off') setBloom(false, false);
 const about = $('about'); let aboutReturn = null;
@@ -716,7 +747,7 @@ function frame(now){
     state.atoms = lerp(F.atoms,T.atoms,e); state.tube = lerp(F.tube,T.tube,e); state.thread = lerp(F.thread,T.thread,e); state.glow = lerp(F.glow,T.glow,e); state.dim = lerp(F.dim,T.dim,e);
     if (t>=1){ state.tweening=false; syncOrbit(); }
   }
-  const wantOff = window.innerWidth/window.innerHeight < .85 ? (STOPS[state.i].offPortrait || 0) : 0;
+  const wantOff = window.innerWidth/window.innerHeight < .85 ? (folded() ? -.12 : (STOPS[state.i].offPortrait || 0)) : 0;
   if (Math.abs(state.offExtra - wantOff) > .0005){ state.offExtra = approach(state.offExtra, wantOff, 2.5, dt); applyViewOffset(); }
   /* gentle auto-turn that eases in and out, time-based */
   const wantSpin = !state.tweening && STOPS[state.i].spin && !reduce && now-state.lastInput > 2500;
