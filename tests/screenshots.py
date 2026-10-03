@@ -6,7 +6,8 @@ Setup:  pip install playwright
         playwright install chromium
 Run:    python tests/screenshots.py                     (local index.html)
         python tests/screenshots.py https://jpinob.github.io/into-the-glow/
-Output: tests/output/desktop_stop1.png ... tests/output/phone_stop6.png
+Output: tests/output/desktop_stop1.png ... tests/output/phone_stop6.png,
+        plus tests/output/phone_stop3_folded.png (text card folded)
 Exit code 1 if the page throws a JavaScript error.
 """
 import sys
@@ -44,6 +45,11 @@ def run():
                     page.click("#shine")
                     page.wait_for_timeout(3000)
                 page.screenshot(path=str(OUT / f"{name}_stop{stop}.png"))
+                if name == "phone" and stop == 3:
+                    page.click("#fold")
+                    page.wait_for_timeout(2000)
+                    page.screenshot(path=str(OUT / f"{name}_stop{stop}_folded.png"))
+                    page.click("#fold")
             page.close()
         browser.close()
     print(f"Screenshots saved in {OUT.relative_to(ROOT)}")

@@ -17,7 +17,7 @@ Six stops, from the outside of the protein to the light hidden at its centre:
 5. **The light source.** The chromophore at the centre. Switch the blue light on and off.
 6. **Why it matters.** GFP as a tool to follow proteins inside living cells.
 
-It runs in the browser, on desktop and on mobile. Drag to turn, scroll or pinch to zoom, right-drag or two fingers to move.
+It runs in the browser, on desktop and on mobile. Drag to turn, scroll or pinch to zoom, right-drag or two fingers to move. On phones, "Hide text" folds the text card down to its title and buttons, so the model stays in view.
 
 ## How it was made
 
