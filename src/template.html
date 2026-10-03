@@ -565,6 +565,8 @@ $('fold').addEventListener('click', () => setCollapsed(!state.collapsed));
 /* phone, card unfolded: body clamped to two lines, legend and controls behind More/Less */
 function setOpen(on){ cardEl.classList.toggle('open', on); const m = $('readMore'); m.setAttribute('aria-expanded', on ? 'true' : 'false'); m.textContent = on ? 'Less' : 'More'; requestAnimationFrame(applyViewOffset); }
 $('readMore').addEventListener('click', () => setOpen(!cardEl.classList.contains('open')));
+// Reason: live text (stops 3 and 5) changes the card height after the stop starts; keep the framing in sync
+new ResizeObserver(() => applyViewOffset()).observe(cardEl);
 if (!canBloom) $('glowBtn').hidden = true;
 if (glowParam === 'off') setBloom(false, false);
 const about = $('about'); let aboutReturn = null;
@@ -740,9 +742,10 @@ function applyViewOffset(){
   const w = window.innerWidth, h = window.innerHeight;
   if (w/h > 1.15 && w > 720) camera.setViewOffset(w,h,-Math.round(w*.1),0,w,h);
   else if (w/h < .85){
-    // lift the model in proportion to how much of the screen the card covers
-    const k = Math.min(1, Math.max(.35, cardEl.getBoundingClientRect().height / (h*.52)));
-    camera.setViewOffset(w,h,0,Math.round(h*(.17*k + state.offExtra)),w,h);
+    // centre the model in the free band between the top UI and the card
+    const top = Math.max(...['.masthead','.gauge','.sources summary'].map(s => document.querySelector(s).getBoundingClientRect().bottom));
+    const cardTop = cardEl.getBoundingClientRect().top;
+    camera.setViewOffset(w,h,0,Math.round(h/2 - (top + cardTop)/2 + h*state.offExtra),w,h);
   }
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
