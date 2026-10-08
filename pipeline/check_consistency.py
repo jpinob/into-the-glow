@@ -6,10 +6,13 @@ Input : data/1ema.cif   (mmCIF file from the Protein Data Bank, CC0)
 Output: stdout only. One line per check, then a summary table.
         Nothing is written. The page, the README and the data stay as they are.
 
-Every line starts with PASS, MISMATCH or NOT CHECKABLE and names the fields
-and values compared. NOT CHECKABLE means the file alone cannot settle the
-question. Nothing is guessed. "PASS (silent)" means the field neither
-confirms nor contradicts the coordinates: it simply does not say.
+Every line starts with PASS, MISMATCH, NOT CHECKABLE or INFO and names the
+fields and values compared. NOT CHECKABLE means the file alone cannot settle
+the question. Nothing is guessed. "PASS (silent)" means the field neither
+confirms nor contradicts the coordinates: it simply does not say. INFO lines
+report a measured value that has nothing to be compared against (an
+alignment, an offset, which numbering scheme a figure uses); they cannot
+fail and do not count as PASS, in the table or in the final count.
 
 Checks
 1. Residue 65. The amino acid the CRO atoms show vs the annotation fields.
@@ -333,7 +336,7 @@ def check_2(c, uniprot=None):
     ent = "".join(c.letter(span[n][0]) for n in sorted(span))
     pairs = list(aligned_pairs(ent, c.ref_seq))
     gaps = [(q, t) for q, t in pairs if q is None or t is None]
-    report("2b", "PASS", f"gemmi global alignment of entity (auth 1-{max(span)}, CRO as X) vs _struct_ref sequence",
+    report("2b", "INFO", f"gemmi global alignment of entity (auth 1-{max(span)}, CRO as X) vs _struct_ref sequence",
            f"gaps: {', '.join(('entity ' + str(q + 1) + ' unmatched') if t is None else ('reference ' + c.ref_seq[t] + str(t + 1) + ' unmatched') for q, t in gaps) or 'none'}; "
            f"offset {off} holds from auth {auth_lo} on")
 
@@ -346,7 +349,7 @@ def check_2(c, uniprot=None):
             diffs.append((n, mon, label, c.letter(mon), db, r))
     inside = [d for d in diffs if auth_lo <= d[0] <= auth_hi]
     outside = [d for d in diffs if not auth_lo <= d[0] <= auth_hi]
-    report("2c", "PASS", "every difference, entity vs _struct_ref sequence, at db = auth + %d" % off,
+    report("2c", "INFO", "every difference, entity vs _struct_ref sequence, at db = auth + %d" % off,
            "; ".join(f"auth {n} {mon}(label {l}) '{e}' vs reference '{r}'@{db}" for n, mon, l, e, db, r in inside) +
            (f" | outside aligned range: " + "; ".join(f"auth {n} {mon} '{e}' vs '{r}'@{db}" for n, mon, l, e, db, r in outside) if outside else ""))
 
@@ -413,7 +416,7 @@ def check_2(c, uniprot=None):
     epairs = list(aligned_pairs(ent, useq))
     ediff = [(q + 1, span[q + 1][0], ent[q], useq[t], t + 1) for q, t in epairs if q is not None and t is not None and ent[q] != useq[t]]
     egaps = [(q, t) for q, t in epairs if q is None or t is None]
-    report("2j", "PASS", "entity (CRO as X) vs UniProt P42212, gemmi global alignment",
+    report("2j", "INFO", "entity (CRO as X) vs UniProt P42212, gemmi global alignment",
            f"gaps: {len(egaps)}; differences: " + "; ".join(f"auth {n} {mon} '{e}' vs UniProt '{u}'@{p}" for n, mon, e, u, p in ediff))
     for n, mon, e, u, p in ediff:
         if mon == "CRO":
@@ -549,7 +552,7 @@ def check_7(c):
     """Numbering: label_seq_id vs auth_seq_id, and which scheme the page uses."""
     around = [c.by_auth[n] for n in (64, 66, 68) if n in c.by_auth]
     offsets = Counter(r.seqid.num - r.label_seq for r in c.polymer)
-    report("7a", "PASS", "_atom_site label_seq_id vs auth_seq_id around CRO",
+    report("7a", "INFO", "_atom_site label_seq_id vs auth_seq_id around CRO",
            "; ".join(f"{r.name} label {r.label_seq} = auth {r.seqid.num} (offset {r.seqid.num - r.label_seq:+d})" for r in around)
            + f"; over the chain: offsets {dict(sorted(offsets.items()))} (auth = label before CRO, label + 2 after)")
     span = c.auth_span()
@@ -573,7 +576,7 @@ def check_7(c):
         ("228 of its 238 amino acids", (seen, total_auth), (len(c.by_label), total_label)),
     ]
     for text_, auth_v, label_v in page:
-        report("7c", "PASS", f"page '{text_}' vs auth {auth_v} vs label {label_v}",
+        report("7c", "INFO", f"page '{text_}' vs auth {auth_v} vs label {label_v}",
                "auth scheme" if auth_v != label_v else "same in both schemes")
     if JSON.exists():
         import json
@@ -632,14 +635,18 @@ def summary():
     for cid, (title, fields) in CHECKS.items():
         statuses = [s for k, s, _f, _d in RESULTS if k.rstrip("abcdefghijk") == cid]
         n = Counter(statuses)
+        checked = len(statuses) - n["INFO"]  # INFO lines cannot fail, so they are not counted
         if n["MISMATCH"]:
-            result = f"MISMATCH {n['MISMATCH']}/{len(statuses)}"
-        elif n["NOT CHECKABLE"] == len(statuses):
+            result = f"MISMATCH {n['MISMATCH']}/{checked}"
+        elif checked == 0:
+            result = "INFO only"
+        elif n["NOT CHECKABLE"] == checked:
             result = "NOT CHECKABLE"
         else:
-            result = f"PASS {n['PASS'] + n['PASS (silent)']}/{len(statuses)}"
+            result = f"PASS {n['PASS'] + n['PASS (silent)']}/{checked}"
         notes = [f"{n['NOT CHECKABLE']} not checkable"] * bool(n["NOT CHECKABLE"] and not result.startswith("NOT")) \
-            + [f"{n['PASS (silent)']} silent"] * bool(n["PASS (silent)"])
+            + [f"{n['PASS (silent)']} silent"] * bool(n["PASS (silent)"]) \
+            + [f"{n['INFO']} info"] * bool(n["INFO"])
         r_lines = [result] + notes
         facts = []
         for path, text_, checks in PAGE_FACTS:
@@ -654,7 +661,9 @@ def summary():
             print(f"{cid + '. ' + title if i == 0 else '':<21} {cell(r_lines, 17)} {cell(f_lines, 48)} {cell(m_lines, 40)}".rstrip())
     print("=" * 128)
     flagged = [k for k, s, _f, _d in RESULTS if s == "MISMATCH"]
-    print(f"{len(RESULTS)} lines: {Counter(s for _k, s, _f, _d in RESULTS)}; MISMATCH lines: {flagged or 'none'}")
+    n = Counter(s for _k, s, _f, _d in RESULTS)
+    counts = ", ".join(f"{n[s]} {s}" for s in ("PASS", "PASS (silent)", "MISMATCH", "NOT CHECKABLE", "INFO") if n[s])
+    print(f"{len(RESULTS)} lines: {counts} (INFO lines are not checks); MISMATCH lines: {flagged or 'none'}")
 
 
 def main():
