@@ -29,7 +29,7 @@ data/1ema.cif  ->  pipeline/prep.py  ->  data/gfp.json  ->  pipeline/build.py  -
 - **Data.** PDB entry 1EMA: the S65T variant of GFP, solved by X-ray crystallography at 1.9 Å (Ormö et al., *Science* 273:1392, 1996).
 - **Pipeline.** `prep.py` drops the water, keeps the 1,771 atoms and the 11 strands annotated in the file, aligns the barrel axis and centres everything on the chromophore. `build.py` embeds that data in the page.
 - **Page.** A single HTML file. No server, no framework. Three.js r128 from cdnjs; the glow effect uses the official Three.js examples, loaded from jsDelivr.
-- **Tests.** `tests/screenshots.py` opens the page in headless Chromium with Playwright and captures every stop at desktop and phone sizes.
+- **Tests.** `tests/screenshots.py` opens the page in headless Chromium with Playwright and captures every stop at desktop and phone sizes. `tests/firma_contrast.py` measures the footer signature colours against the footer background in light and dark themes.
 
 ### Rebuild it
 
@@ -48,6 +48,8 @@ python tests/screenshots.py
 ```
 
 Screenshots are saved in `tests/output/`. Pass a URL to check the live site instead of the local file.
+
+The footer contrast check runs the same way: `python tests/firma_contrast.py`. It exits with code 1 if a colour falls below 4.5:1 (3:1 for the heart).
 
 ## Every fact traced
 
