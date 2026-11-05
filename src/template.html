@@ -94,6 +94,8 @@ body{
 .fold:focus-visible{outline:3px solid var(--glow);outline-offset:2px}
 .card .more{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease, visibility 0s}
 .card .more > div{min-height:0;overflow:hidden}
+.card .more > div.capped{overflow-y:auto;overscroll-behavior:contain}
+.card .more > div.capped:focus-visible{outline:3px solid var(--glow);outline-offset:2px;border-radius:6px}
 .card h2{font-family:var(--serif);font-weight:500;font-size:28px;line-height:1.1;margin:0 0 8px}
 .card .body{margin:0}
 .card .legend{margin:6px 0 0;font-size:14px;color:var(--ink-soft)}
@@ -585,10 +587,31 @@ function setCollapsed(on){
 }
 $('fold').addEventListener('click', () => setCollapsed(!state.collapsed));
 /* phone, card unfolded: body clamped to two lines, legend and controls behind More/Less */
-function setOpen(on){ cardEl.classList.toggle('open', on); const m = $('readMore'); m.setAttribute('aria-expanded', on ? 'true' : 'false'); m.textContent = on ? 'Less' : 'More'; requestAnimationFrame(applyViewOffset); }
+function setOpen(on){ cardEl.classList.toggle('open', on); const m = $('readMore'); m.setAttribute('aria-expanded', on ? 'true' : 'false'); m.textContent = on ? 'Less' : 'More'; fitText(); requestAnimationFrame(applyViewOffset); }
 $('readMore').addEventListener('click', () => setOpen(!cardEl.classList.contains('open')));
-// Reason: live text (stops 3 and 5) changes the card height after the stop starts; keep the framing in sync
-new ResizeObserver(() => applyViewOffset()).observe(cardEl);
+/* short phones: with the text open, cap its height and let it scroll inside the card,
+   so the model always keeps MIN_BAND px of free space above the card */
+const MIN_BAND = 220;
+const textBox = $('more').firstElementChild;
+function fitText(){
+  let cap = 0;
+  if (cardEl.classList.contains('open') && window.matchMedia('(max-width:720px)').matches){
+    const c = cardEl.getBoundingClientRect();
+    // Reason: measure the uncapped height from scrollHeight, so we never clear the cap and re-trigger the ResizeObserver
+    const natural = c.height - textBox.clientHeight + textBox.scrollHeight;
+    const allowed = c.bottom - topUiBottom() - MIN_BAND;
+    if (natural > allowed) cap = Math.max(96, Math.floor(textBox.scrollHeight - (natural - allowed)));
+  }
+  const want = cap ? cap + 'px' : '';
+  if (textBox.style.maxHeight === want) return;
+  textBox.style.maxHeight = want;
+  textBox.classList.toggle('capped', !!cap);
+  // a scrollable region must be reachable and named for keyboard and screen reader users
+  if (cap){ textBox.tabIndex = 0; textBox.setAttribute('role', 'region'); textBox.setAttribute('aria-label', 'Stop text'); }
+  else { textBox.removeAttribute('tabindex'); textBox.removeAttribute('role'); textBox.removeAttribute('aria-label'); textBox.scrollTop = 0; }
+}
+// Reason: live text (stops 3 and 5) changes the card height after the stop starts; keep the cap and the framing in sync
+new ResizeObserver(() => { fitText(); applyViewOffset(); }).observe(cardEl);
 if (!canBloom) $('glowBtn').hidden = true;
 if (glowParam === 'off') setBloom(false, false);
 const about = $('about'); let aboutReturn = null;
@@ -760,12 +783,16 @@ window.addEventListener('keydown', e => {
   else if (e.key==='r'||e.key==='R') recentre();
 });
 
+/* lowest edge of the UI pinned to the top of the screen */
+function topUiBottom(){
+  return Math.max(...['.masthead','.gauge','.sources summary'].map(s => document.querySelector(s).getBoundingClientRect().bottom));
+}
 function applyViewOffset(){
   const w = window.innerWidth, h = window.innerHeight;
   if (w/h > 1.15 && w > 720){ camera.setViewOffset(w,h,-Math.round(w*.1),0,w,h); state.zoomGoal = 1; }
   else if (w/h < .85){
     // centre the model in the free band between the top UI and the card
-    const top = Math.max(...['.masthead','.gauge','.sources summary'].map(s => document.querySelector(s).getBoundingClientRect().bottom));
+    const top = topUiBottom();
     const cardTop = cardEl.getBoundingClientRect().top;
     // Reason: below ~340px of free band the model no longer fits; zoom out in proportion
     state.zoomGoal = Math.max(.5, Math.min(1, (cardTop - top) / 340));
@@ -778,7 +805,7 @@ function applyViewOffset(){
 function resize(){
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w,h,false); if (composer) composer.setSize(w,h); camera.aspect = w/h;
-  applyViewOffset();
+  fitText(); applyViewOffset();
 }
 window.addEventListener('resize', resize); resize();
 
