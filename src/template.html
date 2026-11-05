@@ -555,8 +555,6 @@ $('recentre').addEventListener('click', recentre);
 const cardEl = $('card');
 /* phone: fold the card down to title and buttons so the model stays visible.
    Only CSS hides the text, so chips, speed and play keep their state. */
-const phoneMQ = window.matchMedia('(max-width:720px)');
-const folded = () => state.collapsed && phoneMQ.matches;
 function setCollapsed(on){
   state.collapsed = on;
   cardEl.classList.toggle('collapsed', on);
@@ -780,7 +778,8 @@ function frame(now){
     state.atoms = lerp(F.atoms,T.atoms,e); state.tube = lerp(F.tube,T.tube,e); state.thread = lerp(F.thread,T.thread,e); state.glow = lerp(F.glow,T.glow,e); state.dim = lerp(F.dim,T.dim,e);
     if (t>=1){ state.tweening=false; syncOrbit(); }
   }
-  const wantOff = window.innerWidth/window.innerHeight < .85 ? (folded() ? -.12 : (STOPS[state.i].offPortrait || 0)) : 0;
+  // Reason: no extra offset when the card is folded; applyViewOffset already centres the model in the larger free band
+  const wantOff = window.innerWidth/window.innerHeight < .85 ? (STOPS[state.i].offPortrait || 0) : 0;
   if (Math.abs(state.offExtra - wantOff) > .0005){ state.offExtra = approach(state.offExtra, wantOff, 2.5, dt); applyViewOffset(); }
   if (Math.abs(camera.zoom - state.zoomGoal) > .001){ camera.zoom = reduce ? state.zoomGoal : approach(camera.zoom, state.zoomGoal, 6, dt); camera.updateProjectionMatrix(); }
   /* gentle auto-turn that eases in and out, time-based */
