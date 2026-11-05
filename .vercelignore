@@ -1,0 +1,8 @@
+# Only the built page and its preview image are public.
+# Source, pipeline, raw data and tests stay in the repo, not on the site.
+pipeline/
+tests/
+src/
+data/
+README.md
+*.patch
